@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Hilias <hilias.def@gmail.com>"]
 description = "A simple dfa"
 license = "WTFPL"
+repository = "https://github.com/ncaracci/RustTestDfa"
 
 [dependencies]
