@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::cmp::Eq;
 
 #[derive(Debug)]
-pub struct Automata<T>
+pub struct Automaton<T>
     where T: Hash + Eq {
     states: HashMap<State, HashMap<T, State>>,
     start: State,
@@ -16,11 +16,11 @@ pub struct State {
     end: bool
 }
 
-impl<T> Automata<T>
+impl<T> Automaton<T>
     where T: Hash + Eq {
 
     pub fn new(start: State) -> Self {
-        let mut r = Automata {
+        let mut r = Automaton {
             states: HashMap::new(),
             start: start,
             current: start,
@@ -83,7 +83,7 @@ mod test {
         let s0 = State::new(0, false);
         let s1 = State::new(1, true);
 
-        let mut dfa = Automata::new(s0);
+        let mut dfa = Automaton::new(s0);
         dfa.add_state(s1);
         dfa.add_transition(s0, s1, 10);
         dfa.add_transition(s1, s0, 15);
