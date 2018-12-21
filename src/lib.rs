@@ -1,48 +1,96 @@
-use std::collections::HashMap;
-use std::hash::Hash;
 use std::cmp::Eq;
 
 #[derive(Debug)]
 pub struct Automaton<T>
-    where T: Hash + Eq {
-    states: HashMap<State, HashMap<T, State>>,
-    start: State,
-    current: State,
+    where T: Eq {
+    states: Vec<StateData>,
+    edges: Vec<EdgeData<T>>,
+    start: Option<StateIndex>,
+    current: Option<StateIndex>,
+    end: Vec<StateIndex>,
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub type StateIndex = usize;
+
+#[derive(Debug)]
+pub struct StateData {
+    first_edge: Option<EdgeIndex>,
+}
+
+pub type EdgeIndex = usize;
+
+#[derive(Debug)]
+pub struct EdgeData<T>
+    where T: Eq {
+    value: T,
+    target: StateIndex,
+    next_brother_edge: Option<EdgeIndex>, 
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct State {
     id: usize,
     end: bool
 }
 
 impl<T> Automaton<T>
-    where T: Hash + Eq {
+    where T: Eq {
 
-    pub fn new(start: State) -> Self {
-        let mut r = Automaton {
-            states: HashMap::new(),
-            start: start,
-            current: start,
-        };
-        r.add_state(start);
-        r
-    }
-
-    pub fn add_state(&mut self, state: State) {
-        self.states.insert(state, HashMap::new());
-    }
-
-    pub fn add_transition(&mut self, init: State, end: State, val: T) {
-        if let Some(t) = self.states.get_mut(&init) {
-            t.insert(val, end);
+    pub fn new() -> Self {
+        Automaton {
+            states: Vec::new(),
+            edges: Vec::new(),
+            start: None,
+            current: None,
+            end: Vec::new(),
         }
     }
 
+    pub fn add_state(&mut self) -> StateIndex {
+        let index = self.states.len();
+        self.states.push(StateData {
+            first_edge: None,
+        });
+        index
+    }
+
+    pub fn add_edge(&mut self, source: StateIndex, target: StateIndex, value: T) {
+        let edge_index  = self.edges.len();
+        let state_data = &mut self.states[source];
+        // TODO: Check duplicates
+        self.edges.push(EdgeData {
+            value,
+            target,
+            next_brother_edge: state_data.first_edge,
+        });
+        state_data.first_edge = Some(edge_index);
+    }
+
+    pub fn set_start(&mut self, new_start: StateIndex) {
+        self.start = Some(new_start);
+        self.current = Some(new_start);
+    }
+
+    pub fn add_end(&mut self, new_end: StateIndex) {
+        // TODO: Check duplicates
+        self.end.push(new_end);
+    }
+
     pub fn consume(&mut self, val: T) {
-        let t = self.states.get(&self.current).unwrap();
-        if let Some(s) = t.get(&val) {
-            self.current = *s;
+        if let Some(current) = self.current {
+            let state = &self.states[current];
+            if let Some(edge) = state.first_edge {
+                if self.edges[edge].value == val {
+                    self.current = Some(self.edges[edge].target);
+                    return;
+                }
+                while let Some(edge) = self.edges[edge].next_brother_edge {
+                    if self.edges[edge].value == val {
+                        self.current = Some(self.edges[edge].target);
+                        return;
+                    }   
+                }
+            }
         }
     }
 
@@ -51,27 +99,16 @@ impl<T> Automaton<T>
     }
 
     pub fn accepted(&self) -> bool {
-        self.current.accept()
-    }
-
-    pub fn current(&self) -> State {
-        self.current
-    }
-}
-
-impl State {
-
-    pub fn new(id: usize, end: bool) -> Self {
-        State {
-            id: id,
-            end: end,
+        if let Some(current) = self.current {
+            self.end.contains(&current)
+        } else {
+            false
         }
     }
 
-    fn accept(&self) -> bool {
-        self.end
+    pub fn current(&self) -> Option<StateIndex> {
+        self.current
     }
-
 }
 
 #[cfg(test)]
@@ -80,24 +117,29 @@ mod test {
     #[test]
     fn test_dfa() {
 
-        let s0 = State::new(0, false);
-        let s1 = State::new(1, true);
+        let mut dfa = Automaton::new();
 
-        let mut dfa = Automaton::new(s0);
-        dfa.add_state(s1);
-        dfa.add_transition(s0, s1, 10);
-        dfa.add_transition(s1, s0, 15);
+        let s0 = dfa.add_state();
+        let s1 = dfa.add_state();
 
-        assert_eq!(s0, dfa.current());
+        dfa.set_start(s0);
+        dfa.add_end(s1);
+
+        assert_eq!(s0, dfa.start.unwrap());
+
+        dfa.add_edge(s0, s1, 10);
+        dfa.add_edge(s1, s0, 15);
+
+        assert_eq!(s0, dfa.current().unwrap());
 
         dfa.consume(1);
-        assert_eq!(s0, dfa.current());
+        assert_eq!(s0, dfa.current().unwrap());
 
         dfa.consume(10);
-        assert_eq!(s1, dfa.current());
+        assert_eq!(s1, dfa.current().unwrap());
         assert_eq!(true, dfa.accepted());
 
         dfa.restart();
-        assert_eq!(s0, dfa.current());
+        assert_eq!(s0, dfa.current().unwrap());
     }
 }
