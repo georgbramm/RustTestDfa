@@ -1,6 +1,6 @@
 [package]
 name = "dfa"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Hilias <hilias.def@gmail.com>"]
 description = "A simple dfa"
 license = "WTFPL"
