@@ -5,8 +5,8 @@ pub struct Automaton<T>
     where T: Eq {
     states: Vec<StateData>,
     edges: Vec<EdgeData<T>>,
-    start: Option<StateIndex>,
-    current: Option<StateIndex>,
+    start: StateIndex,
+    current: StateIndex,
     end: Vec<StateIndex>,
 }
 
@@ -38,13 +38,14 @@ struct State {
 impl<T> Automaton<T>
     where T: Eq {
 
-    /// Creates a new empty Automaton.
+    /// Creates a new automaton with 1 state and no edges.
     pub fn new() -> Self {
+        let first_state = StateData { first_edge: None };
         Automaton {
-            states: Vec::new(),
+            states: vec![first_state],
             edges: Vec::new(),
-            start: None,
-            current: None,
+            start: 0,
+            current: 0,
             end: Vec::new(),
         }
     }
@@ -74,8 +75,8 @@ impl<T> Automaton<T>
 
     /// Sets the starting state of the automaton.
     pub fn set_start(&mut self, new_start: StateIndex) {
-        self.start = Some(new_start);
-        self.current = Some(new_start);
+        self.start = new_start;
+        self.current = new_start;
     }
 
     /// Adds an accepting state to the automaton.
@@ -87,40 +88,33 @@ impl<T> Automaton<T>
     /// Consumes a value and advances, if the value is not present in some transition 
     /// then it stays in the same state.
     pub fn consume(&mut self, val: T) {
-        // TODO: Fix this monstrosity
-        if let Some(current) = self.current {
-            let state = &self.states[current];
-            if let Some(edge) = state.first_edge {
+        let state = &self.states[self.current];
+        if let Some(edge) = state.first_edge {
+            if self.edges[edge].value == val {
+                self.current = self.edges[edge].target;
+                return;
+            }
+            while let Some(edge) = self.edges[edge].next_brother_edge {
                 if self.edges[edge].value == val {
-                    self.current = Some(self.edges[edge].target);
+                    self.current = self.edges[edge].target;
                     return;
-                }
-                while let Some(edge) = self.edges[edge].next_brother_edge {
-                    if self.edges[edge].value == val {
-                        self.current = Some(self.edges[edge].target);
-                        return;
-                    }   
-                }
+                }   
             }
         }
     }
 
     /// Restarts the automaton, setting the current state to start.
-    pub fn restart(&mut self) {
+    pub fn restart(&mut self){
         self.current = self.start;
     }
 
     /// Returns a boolean value telling if the current state is an accepting state.
     pub fn accepted(&self) -> bool {
-        if let Some(current) = self.current {
-            self.end.contains(&current)
-        } else {
-            false
-        }
+        self.end.contains(&self.current)
     }
 
     /// Returns StateIndex of the current value.
-    pub fn current(&self) -> Option<StateIndex> {
+    pub fn current(&self) -> StateIndex {
         self.current
     }
 }
@@ -139,21 +133,21 @@ mod test {
         dfa.set_start(s0);
         dfa.add_end(s1);
 
-        assert_eq!(s0, dfa.start.unwrap());
+        assert_eq!(s0, dfa.start);
 
         dfa.add_edge(s0, s1, 10);
         dfa.add_edge(s1, s0, 15);
 
-        assert_eq!(s0, dfa.current().unwrap());
+        assert_eq!(s0, dfa.current());
 
         dfa.consume(1);
-        assert_eq!(s0, dfa.current().unwrap());
+        assert_eq!(s0, dfa.current());
 
         dfa.consume(10);
-        assert_eq!(s1, dfa.current().unwrap());
+        assert_eq!(s1, dfa.current());
         assert_eq!(true, dfa.accepted());
 
         dfa.restart();
-        assert_eq!(s0, dfa.current().unwrap());
+        assert_eq!(s0, dfa.current());
     }
 }
