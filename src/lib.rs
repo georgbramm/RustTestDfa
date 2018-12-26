@@ -77,6 +77,7 @@ impl<T> Automaton<T>
     }
 
     pub fn consume(&mut self, val: T) {
+        // TODO: Fix this monstrosity
         if let Some(current) = self.current {
             let state = &self.states[current];
             if let Some(edge) = state.first_edge {
