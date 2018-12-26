@@ -10,17 +10,19 @@ pub struct Automaton<T>
     end: Vec<StateIndex>,
 }
 
+/// An `StateIndex` represents a state in the automaton.
 pub type StateIndex = usize;
 
 #[derive(Debug)]
-pub struct StateData {
+struct StateData {
     first_edge: Option<EdgeIndex>,
 }
 
+/// An `EdgeIndex` represents an edge in the automaton.
 pub type EdgeIndex = usize;
 
 #[derive(Debug)]
-pub struct EdgeData<T>
+struct EdgeData<T>
     where T: Eq {
     value: T,
     target: StateIndex,
@@ -28,7 +30,7 @@ pub struct EdgeData<T>
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct State {
+struct State {
     id: usize,
     end: bool
 }
@@ -36,6 +38,7 @@ pub struct State {
 impl<T> Automaton<T>
     where T: Eq {
 
+    /// Creates a new empty Automaton.
     pub fn new() -> Self {
         Automaton {
             states: Vec::new(),
@@ -46,6 +49,7 @@ impl<T> Automaton<T>
         }
     }
 
+    /// Adds a state in the automaton and return it's StateIndex.
     pub fn add_state(&mut self) -> StateIndex {
         let index = self.states.len();
         self.states.push(StateData {
@@ -54,6 +58,8 @@ impl<T> Automaton<T>
         index
     }
 
+    /// Adds an edge to the automaton, requires the starting state, the ending state
+    /// and a value of type T representing the transition value.
     pub fn add_edge(&mut self, source: StateIndex, target: StateIndex, value: T) {
         let edge_index  = self.edges.len();
         let state_data = &mut self.states[source];
@@ -66,16 +72,20 @@ impl<T> Automaton<T>
         state_data.first_edge = Some(edge_index);
     }
 
+    /// Sets the starting state of the automaton.
     pub fn set_start(&mut self, new_start: StateIndex) {
         self.start = Some(new_start);
         self.current = Some(new_start);
     }
 
+    /// Adds an accepting state to the automaton.
     pub fn add_end(&mut self, new_end: StateIndex) {
         // TODO: Check duplicates
         self.end.push(new_end);
     }
 
+    /// Consumes a value and advances, if the value is not present in some transition 
+    /// then it stays in the same state.
     pub fn consume(&mut self, val: T) {
         // TODO: Fix this monstrosity
         if let Some(current) = self.current {
@@ -95,10 +105,12 @@ impl<T> Automaton<T>
         }
     }
 
+    /// Restarts the automaton, setting the current state to start.
     pub fn restart(&mut self) {
         self.current = self.start;
     }
 
+    /// Returns a boolean value telling if the current state is an accepting state.
     pub fn accepted(&self) -> bool {
         if let Some(current) = self.current {
             self.end.contains(&current)
@@ -107,6 +119,7 @@ impl<T> Automaton<T>
         }
     }
 
+    /// Returns StateIndex of the current value.
     pub fn current(&self) -> Option<StateIndex> {
         self.current
     }
